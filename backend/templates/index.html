@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+  <head>
+    <title>QueuePredict Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial;
+        background: #111;
+        color: white;
+        text-align: center;
+      }
+      .card {
+        display: inline-block;
+        margin: 20px;
+        padding: 20px;
+        background: #222;
+        border-radius: 12px;
+        width: 250px;
+      }
+      .big {
+        font-size: 40px;
+        font-weight: bold;
+      }
+      button {
+        padding: 12px 20px;
+        font-size: 18px;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>QueuePredict Live Monitoring</h1>
+
+    <div class="card">
+      <h2>Queue Length</h2>
+      <div id="queue" class="big">0</div>
+    </div>
+
+    <div class="card">
+      <h2>Estimated Wait</h2>
+      <div id="wait" class="big">0s</div>
+    </div>
+
+    <div class="card">
+      <h2>Avg Service Time</h2>
+      <div id="service" class="big">0s</div>
+    </div>
+
+    <br />
+    <button onclick="reset()">Replay Day Simulation</button>
+
+    <canvas id="chart" width="800" height="300"></canvas>
+
+    <script>
+      let labels = [];
+      let data = [];
+
+      const ctx = document.getElementById("chart");
+      const chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Queue Length",
+              data: data,
+              borderColor: "lime",
+            },
+          ],
+        },
+      });
+
+      async function update() {
+        let res = await fetch("http://127.0.0.1:5000/status");
+        let j = await res.json();
+
+        document.getElementById("queue").innerText = j.queue_length;
+        document.getElementById("wait").innerText = j.estimated_wait + " s";
+        document.getElementById("service").innerText =
+          j.avg_service_time + " s";
+
+        labels.push(new Date().toLocaleTimeString());
+        data.push(j.queue_length);
+
+        if (labels.length > 20) {
+          labels.shift();
+          data.shift();
+        }
+
+        chart.update();
+      }
+
+      async function reset() {
+        await fetch("http://127.0.0.1:5000/reset", { method: "POST" });
+        labels = [];
+        data = [];
+      }
+
+      setInterval(update, 2000);
+    </script>
+  </body>
+</html>
